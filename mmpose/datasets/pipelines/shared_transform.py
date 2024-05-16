@@ -587,3 +587,41 @@ class RenameKeys:
             key_src, key_tgt = key_pair
             results[key_tgt] = results.pop(key_src)
         return results
+
+@PIPELINES.register_module()
+class NormalizeTensor_Heatmap:
+    """Normalize the Tensor image (CxHxW), with mean and std.
+
+    Required key: 'attention_heatmap'. Modifies key: 'attention_heatmap'.
+
+    Args:
+        mean (list[float]): Mean values of 3 channels.
+        std (list[float]): Std values of 3 channels.
+    """
+
+    def __init__(self, mean, std,to_rgb=True):
+        self.mean = np.array(mean, dtype=np.float32)#mean
+        self.std = np.array(std, dtype=np.float32)#std
+        self.to_rgb = to_rgb
+
+    def __call__(self, results):
+        if isinstance(results['attention_heatmap'], (list, tuple)):
+            results['attention_heatmap'] = [
+                mmcv.imnormalize(img, mean=self.mean, std=self.std,to_rgb=self.to_rgb)
+                for img in results['attention_heatmap']
+            ]
+        else:
+            results['attention_heatmap'] = mmcv.imnormalize(
+                results['attention_heatmap'], mean=self.mean, std=self.std,to_rgb=self.to_rgb)
+        return results
+
+@PIPELINES.register_module()
+class ToTensor_Heatmap(object):
+
+    def __call__(self, results):
+        if isinstance(results['attention_heatmap'], (list, tuple)):
+            results['attention_heatmap'] = [to_tensor(img.transpose(2, 0, 1)) for img in results['attention_heatmap']]
+        else:
+            results['attention_heatmap'] = to_tensor(results['attention_heatmap'].transpose(2, 0, 1))
+#        print(results['img'].dtype)
+        return results

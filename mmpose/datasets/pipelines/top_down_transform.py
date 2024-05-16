@@ -1000,3 +1000,164 @@ class Topdown_Heatmap_Target_Size:
         results['target_weight_reg'] = target_weight
 
         return results
+    
+@PIPELINES.register_module()
+class TopDownRandomFlip_Heatmap:
+    """Data augmentation with random image flip.
+
+    Required keys: 'img', 'joints_3d', 'joints_3d_visible', 'center' and
+    'ann_info'.
+
+    Modifies key: 'img', 'joints_3d', 'joints_3d_visible', 'center' and
+    'flipped'.
+
+    Args:
+        flip (bool): Option to perform random flip.
+        flip_prob (float): Probability of flip.
+    """
+
+    def __init__(self, flip_prob=0.5):
+        self.flip_prob = flip_prob
+
+    def __call__(self, results):
+        """Perform data augmentation with random image flip."""
+        #print(results['image_file'])
+        img = results['img']
+        gt_seg_annotation = results['attention_heatmap']
+        joints_3d = results['joints_3d']
+        joints_3d_visible = results['joints_3d_visible']
+        if 'center' in results:
+            center = results['center']
+
+        # A flag indicating whether the image is flipped,
+        # which can be used by child class.
+        flipped = False
+        if np.random.rand() <= self.flip_prob:
+            flipped = True
+            #print(gt_seg_annotation.shape)
+            if not isinstance(img, list):
+                img = img[:, ::-1, :]
+                gt_seg_annotation = gt_seg_annotation[:, ::-1, :]
+            else:
+                img = [i[:, ::-1, :] for i in img]
+                gt_seg_annotation = [i[:, ::-1, :] for i in gt_seg_annotation]
+            if not isinstance(img, list):
+                joints_3d, joints_3d_visible = fliplr_joints(
+                    joints_3d, joints_3d_visible, img.shape[1],
+                    results['ann_info']['flip_pairs'])
+                if 'center' in results:
+                    center[0] = img.shape[1] - center[0] - 1
+            else:
+                joints_3d, joints_3d_visible = fliplr_joints(
+                    joints_3d, joints_3d_visible, img[0].shape[1],
+                    results['ann_info']['flip_pairs'])
+                if 'center' in results:
+                    center[0] = img[0].shape[1] - center[0] - 1
+
+        results['img'] = img
+        results['joints_3d'] = joints_3d
+        results['joints_3d_visible'] = joints_3d_visible
+        results['attention_heatmap'] = gt_seg_annotation
+        if 'center' in results:
+            results['center'] = center
+        results['flipped'] = flipped
+
+        return results
+    
+@PIPELINES.register_module()
+class TopDownAffine_Heatmap:
+    """Affine transform the image to make input.
+
+    Required keys:'img', 'joints_3d', 'joints_3d_visible', 'ann_info','scale',
+    'rotation' and 'center'.
+
+    Modified keys:'img', 'joints_3d', and 'joints_3d_visible'.
+
+    Args:
+        use_udp (bool): To use unbiased data processing.
+            Paper ref: Huang et al. The Devil is in the Details: Delving into
+            Unbiased Data Processing for Human Pose Estimation (CVPR 2020).
+    """
+
+    def __init__(self, use_udp=False):
+        self.use_udp = use_udp
+
+    def __call__(self, results):
+        image_size = results['ann_info']['image_size']
+        img = results['img']
+        gt_seg_annotation = results['attention_heatmap']
+        #cv2.imwrite('/data2/Thanaporn/before_affine_img.png',img)
+        #cv2.imwrite('/data2/Thanaporn/before_affine_gt.png',gt_seg_annotation)
+        joints_3d = results['joints_3d']
+        #print('joints_3d:',joints_3d)
+        joints_3d_visible = results['joints_3d_visible']
+        #joints_temp = joints_3d
+        c = results['center']
+        s = results['scale']
+        r = results['rotation']
+        img_path = results['image_file']
+        #joints = np.zeros((len(joints_3d), 3), dtype=np.float32)
+        if self.use_udp:
+            trans = get_warp_matrix(r, c * 2.0, image_size - 1.0, s * 200.0)
+            if not isinstance(img, list):
+                img = cv2.warpAffine(
+                    img,
+                    trans, (int(image_size[0]), int(image_size[1])),
+                    flags=cv2.INTER_LINEAR)
+                gt_seg_annotation = cv2.warpAffine(
+                    gt_seg_annotation,
+                    trans, (int(image_size[0]), int(image_size[1])),
+                    flags=cv2.INTER_LINEAR)
+            else:
+                img = [
+                    cv2.warpAffine(
+                        i,
+                        trans, (int(image_size[0]), int(image_size[1])),
+                        flags=cv2.INTER_LINEAR) for i in img
+                ]
+                gt_seg_annotation = [
+                    cv2.warpAffine(
+                        i,
+                        trans, (int(image_size[0]), int(image_size[1])),
+                        flags=cv2.INTER_LINEAR) for i in gt_seg_annotation
+                ]
+
+            joints_3d[:, 0:2] = \
+                warp_affine_joints(joints_3d[:, 0:2].copy(), trans)
+
+        else:
+            trans = get_affine_transform(c, s, r, image_size)
+            if not isinstance(img, list):
+                img = cv2.warpAffine(
+                    img,
+                    trans, (int(image_size[0]), int(image_size[1])),
+                    flags=cv2.INTER_LINEAR)
+                gt_seg_annotation = cv2.warpAffine(
+                    gt_seg_annotation,
+                    trans, (int(image_size[0]), int(image_size[1])),
+                    flags=cv2.INTER_LINEAR)
+            else:
+                img = [
+                    cv2.warpAffine(
+                        i,
+                        trans, (int(image_size[0]), int(image_size[1])),
+                        flags=cv2.INTER_LINEAR) for i in img
+                ]
+                gt_seg_annotation = [
+                    cv2.warpAffine(
+                        i,
+                        trans, (int(image_size[0]), int(image_size[1])),
+                        flags=cv2.INTER_LINEAR) for i in gt_seg_annotation
+                ]
+            for i in range(results['ann_info']['num_joints']):
+                if joints_3d_visible[i, 0] > 0.0:
+                    joints_3d[i,0:2] = affine_transform(joints_3d[i, 0:2], trans) 
+        #cv2.imwrite('/data2/Thanaporn/affine_gt.png',gt_seg_annotation)
+        #cv2.imwrite('/data2/Thanaporn/affine_img.png',img)
+        
+        results['img'] = img
+        results['joints_3d'] = joints_3d
+        results['joints_3d_visible'] = joints_3d_visible
+        results['attention_heatmap'] = gt_seg_annotation
+        #cv2.imwrite('/data2/Thanaporn/input_img.jpg',img)
+        return results

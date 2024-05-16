@@ -15,6 +15,7 @@ from .topdown_posetrack18_video_dataset import TopDownPoseTrack18VideoDataset
 from .topdown_head_dataset import TopDownHeadDataset
 from .topdown_isbi2023_dataset import TopDownISBI2023Dataset
 from .topdown_hand_dataset import TopDownHandDataset
+from .topdown_head_dataset_heatmap.py import TopDownHeadDataset_Heatmap
 
 __all__ = [
     'TopDownAicDataset',
@@ -32,5 +33,6 @@ __all__ = [
     'TopDownPoseTrack18VideoDataset',
     'TopDownHeadDataset',
     'TopDownISBI2023Dataset',
-    'TopDownHandDataset'
+    'TopDownHandDataset',
+    'TopDownHeadDataset_Heatmap'
 ]

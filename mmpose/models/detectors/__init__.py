@@ -7,8 +7,9 @@ from .posewarper import PoseWarper
 from .top_down import TopDown
 from .voxelpose import VoxelPose
 from .top_down_2head_neck import TopDown_2Head_Neck
+from .TopDown_2Head_Neck_3stage import TopDown_2Head_Neck_3stage
 
 __all__ = [
     'TopDown', 'AssociativeEmbedding', 'ParametricMesh',
-    'PoseLifter', 'Interhand3D', 'PoseWarper', 'VoxelPose','TopDown_2Head_Neck'
+    'PoseLifter', 'Interhand3D', 'PoseWarper', 'VoxelPose','TopDown_2Head_Neck','TopDown_2Head_Neck_3stage'
 ]
