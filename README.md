@@ -7,6 +7,7 @@
 ## Prerequisites
 - Python 3.7
 - MMpose 0.23
+- pyronn (PyTorch version): (https://github.com/theHamsta/pyronn-torch)
 
 ## Usage of the code
 - **Dataset preparation**
@@ -85,27 +86,3 @@
   ```
     
   - Output: 2D landmark coordinates
-
-<- **Train the model**
-  - To train our HTC model with a multiresolution learning approach, run **sh train.sh**:
-  ```
-  # sh train.sh
-  CUDA_VISIBLE_DEVICES=gpu_ids PORT=PORT_NUM ./tools/dist_train.sh \
-  config_file_path num_gpus
-  ```
-
-- **Evaluation**
-  - To evaluate the trained HTC model, run **sh test.sh**:
-  ```
-  # sh test.sh
-  CUDA_VISIBLE_DEVICES=gpu_id PORT=29504 ./tools/dist_test.sh config_file_path \
-      model_weight_path num_gpus \
-      # For evaluation of the Head XCAT dataset, use:
-      --eval 'MRE_h','MRE_std_h','SDR_2_h','SDR_2.5_h','SDR_3_h','SDR_4_h'
-      # For evaluation of ISBI2023 and Hand X-ray dataset, use:
-      # --eval 'MRE_i2','MRE_std_i2','SDR_2_i2','SDR_2.5_i2','SDR_3_i2','SDR_4_i2'
-  ```>
-
-
-### Citation 
-Viriyasaranon, T., Ma, S., Choi, JH. (2023). Anatomical Landmark Detection Using a Multiresolution Learning Approach with a Hybrid Transformer-CNN Model. In: Greenspan, H., et al. Medical Image Computing and Computer Assisted Intervention – MICCAI 2023. MICCAI 2023. Lecture Notes in Computer Science, vol 14225. Springer, Cham. https://doi.org/10.1007/978-3-031-43987-2_42
